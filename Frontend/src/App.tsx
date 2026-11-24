@@ -4,6 +4,9 @@ import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import AceptarInvitacionPage from './pages/AceptarInvitacionPage';
+import { supabase } from './lib/supabase';
+import { cerrarSesionTitan, limpiarDatosSesionTitan, sincronizarSesionTitan } from './lib/sesion';
+
 import './App.css';
 
 function AppRoutes() {
@@ -14,13 +17,36 @@ function AppRoutes() {
     setIsLoggedIn(true);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await cerrarSesionTitan();
     setIsLoggedIn(false);
-    localStorage.removeItem('token');
-    localStorage.removeItem('usuario_id');
-    localStorage.removeItem('usuario_nombre');
-    
+    navigate('/login', { replace: true });
   };
+
+  // Supabase es la autoridad de sesión: cuando vuelve el redirect de Google
+  // (o hay una sesión guardada), se canjea por el JWT que usa la API de Titan V.
+  useEffect(() => {
+    if (!supabase) return;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((evento) => {
+      if (evento === 'PASSWORD_RECOVERY') return; // LoginPage pide la contraseña nueva.
+      if (evento === 'SIGNED_OUT') {
+        limpiarDatosSesionTitan();
+        setIsLoggedIn(false);
+        return;
+      }
+      if (evento === 'SIGNED_IN' || evento === 'INITIAL_SESSION') {
+        void sincronizarSesionTitan().then((sesionLista) => {
+          if (sesionLista) {
+            setIsLoggedIn(true);
+          } else {
+            // El error quedó en sessionStorage; LoginPage lo muestra al abrirse.
+            navigate('/login', { replace: true });
+          }
+        });
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (isLoggedIn && !sessionStorage.getItem('invitacion_pendiente')) {

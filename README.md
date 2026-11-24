@@ -25,9 +25,9 @@ cliente contratante sobre el avance de su proyecto, sin costos de licenciamiento
 - [x] Gestión de turnos y asistencia (CRUD completo)
 - [x] Gestión de subcontratistas (CRUD completo)
 - [x] Kardex de inventario: entradas/salidas con validación de stock disponible
-- [x] Autenticación con JWT real (bcrypt + token con expiración)
-- [x] Registro público con hash de contraseña real
-- [x] Inicio de sesión con Google OAuth 2.0 (verificación server-side)
+- [x] Autenticación real con Supabase: Google OAuth, correo/contraseña, registro y recuperación
+- [x] Sesión de Supabase verificada por el backend y canjeada por un JWT interno con expiración
+- [x] Roles y permisos de obra en PostgreSQL (el perfil se crea automáticamente al primer acceso)
 - [x] Enlaces de invitación por proyecto (link con rol y expiración)
 - [x] Evidencias multimedia vinculadas a proyectos (subida de archivos con vista previa)
 - [x] Flujo de "proyecto activo": los módulos operativos requieren entrar a un proyecto
@@ -42,7 +42,7 @@ cliente contratante sobre el avance de su proyecto, sin costos de licenciamiento
 - **Base de datos:** PostgreSQL
 - **ORM:** SQLAlchemy
 - **Validación:** Pydantic
-- **Autenticación:** JWT (PyJWT) + Google OAuth 2.0
+- **Autenticación:** Supabase Auth (Google + correo/contraseña) + JWT interno (PyJWT)
 - **Seguridad:** bcrypt (hash de contraseñas)
 - **Reportes:** ReportLab (PDF ejecutivo) + openpyxl (Excel .xlsx)
 
@@ -52,9 +52,10 @@ cliente contratante sobre el avance de su proyecto, sin costos de licenciamiento
 titanV/
 ├── Frontend/                  # SPA React + TypeScript (Vite)
 │   ├── src/
-│   │   ├── main.tsx           # Entry point (GoogleOAuthProvider)
-│   │   ├── App.tsx            # Rutas y estado de autenticación
-│   │   ├── api.ts             # Helper fetchConToken (JWT automático)
+│   │   ├── main.tsx           # Entry point
+│   │   ├── App.tsx            # Rutas, sesión de Supabase y JWT de la API
+│   │   ├── api.ts             # URL pública del backend + fetchConToken
+│   │   └── lib/               # Cliente de Supabase y canje de sesión
 │   │   ├── components/        # Sidebar, Inicio, Proyectos, Colaboradores,
 │   │   │                      # Materiales, Usuarios, Tareas, Comentarios, Turnos,
 │   │   │                      # Evidencias, BitacoraReportesTab, Login, Registro, QuienesSomos
@@ -141,10 +142,8 @@ no tiene acceso al módulo.
 
 | Método | Ruta                  | Descripción                              |
 |--------|-----------------------|-------------------------------------------|
-| POST   | `/auth/registro`       | Registro público                          |
-| POST   | `/auth/login`          | Inicio de sesión (email + contraseña)     |
-| POST   | `/auth/google`         | Inicio de sesión con Google OAuth 2.0     |
-| GET    | `/auth/verificar`      | Verificar sesión activa                   |
+| POST   | `/api/auth/supabase`   | Canjea un access_token de Supabase por el JWT de Titan V |
+| POST   | `/api/auth/verificar`  | Verificar sesión activa                   |
 | GET/POST | `/usuarios/`         | Listar / Crear usuarios                   |
 | PUT/DELETE | `/usuarios/{id}`   | Actualizar / Eliminar usuario             |
 | GET/POST | `/proyectos/`        | Listar / Crear proyectos                  |
@@ -188,6 +187,9 @@ pip install -r requirements.txt
 # Copia el archivo de ejemplo y ajusta tu conexión a Postgres
 copy .env.example .env          # En Linux/Mac: cp .env.example .env
 
+# Configura SUPABASE_URL y SUPABASE_ANON_KEY con el MISMO proyecto Supabase
+# del frontend. El backend valida ahí los access_token que recibe.
+
 # Opcional: configura SMTP para que las invitaciones lleguen por correo.
 # En Gmail usa una contraseña de aplicación (16 dígitos) en SMTP_PASSWORD.
 # Si no lo configuras, el enlace de invitación se devuelve al Arquitecto
@@ -206,10 +208,23 @@ La API queda disponible en `http://localhost:8000` y Swagger en `http://localhos
 ```bash
 cd Frontend
 npm install
+copy .env.example .env          # En Linux/Mac: cp .env.example .env
+# Completa VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY.
+# VITE_API_URL solo es obligatorio al desplegar: debe apuntar a la API pública.
+# En Supabase: Authentication > Providers > Google activo y la URL pública
+# registrada en "Redirect URLs" (ella misma es el redirectTo del login).
 npm run dev
 ```
 
 El frontend queda disponible en `http://localhost:5173`.
+
+Para **publicar en la web**, configura las tres variables anteriores en el
+ hosting (o en `Frontend/.env` antes de `npm run build`). Sin
+ `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` el login mostrará un aviso de
+ configuración en lugar de una pantalla de prueba; sin `VITE_API_URL`, el
+ frontend no sabrá dónde está el backend. No dejes valores `localhost` en un
+ despliegue público. En el backend agrega el dominio del frontend a
+ `CORS_ORIGINS` (separado por comas) y reinicia la API.
 
 ## 🧭 Metodología de desarrollo
 

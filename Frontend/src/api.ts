@@ -1,4 +1,30 @@
-const API_URL = (import.meta as any).env?.VITE_API_URL || "http://127.0.0.1:8000";
+// URL pública del backend. En local se usa el puerto 8000; en producción
+// DEBE definirse VITE_API_URL en Frontend/.env (nunca quedar quemada).
+const urlConfigurada = ((import.meta as any).env?.VITE_API_URL || '').trim();
+export const API_URL = (
+  urlConfigurada || ((import.meta as any).env?.DEV ? 'http://127.0.0.1:8000' : '')
+).replace(/\/+$/, '');
+
+export const obtenerApiUrl = (): string => {
+  if (!API_URL) {
+    throw new Error('Configura VITE_API_URL en Frontend/.env con la URL pública del backend Titan V.');
+  }
+  return API_URL;
+};
+
+/** Extrae el mensaje legible de una respuesta de FastAPI (o de Supabase). */
+export const leerErrorApi = async (respuesta: Response): Promise<string> => {
+  try {
+    const datos = await respuesta.json();
+    if (typeof datos?.detail === 'string') return datos.detail;
+    if (typeof datos?.message === 'string') return datos.message;
+    if (typeof datos?.error?.message === 'string') return datos.error.message;
+    if (typeof datos?.error === 'string') return datos.error;
+  } catch {
+    // La respuesta no tenía cuerpo JSON: se usa el estado HTTP.
+  }
+  return `Error ${respuesta.status}: ${respuesta.statusText || 'No se pudo completar la solicitud.'}`;
+};
 
 export const fetchConToken = async (
   endpoint: string,
@@ -12,7 +38,7 @@ export const fetchConToken = async (
     ...(options.headers as Record<string, string>),
   };
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
+  const response = await fetch(`${obtenerApiUrl()}${endpoint}`, {
     ...options,
     headers,
   });

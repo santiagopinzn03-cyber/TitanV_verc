@@ -3,6 +3,7 @@ import random
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.config import MAX_USUARIOS
@@ -12,6 +13,7 @@ from app.schemas import (
     ForgotPasswordRequest,
     GoogleAuthRequest,
     ResetPasswordRequest,
+    SupabaseAuthRequest,
     UsuarioCreate,
     UsuarioLogin,
     UsuarioResponse,
@@ -101,6 +103,63 @@ def login_google(datos: GoogleAuthRequest, request: Request, db: Session = Depen
 
     return {
         "mensaje": "Inicio de sesión con Google exitoso",
+        "usuario_id": usuario.id_usuario,
+        "nombre": f"{usuario.nombres} {usuario.apellidos}".strip(),
+        "correo": usuario.correo_electronico,
+        "rol": usuario.rol,
+        "token": token,
+        "token_type": "bearer",
+    }
+
+
+@router.post("/supabase")
+def login_supabase(datos: SupabaseAuthRequest, request: Request, db: Session = Depends(get_db)):
+    """Canjea una sesión válida de Supabase por el JWT interno de Titan V.
+
+    Supabase es la autoridad de autenticación (Google, correo/contraseña y
+    registro); PostgreSQL sigue siendo la fuente de verdad de proyectos, roles
+    y permisos. La identidad se toma SIEMPRE del token verificado por Supabase.
+    """
+    limitador.verificar(f"supabase:{ip_cliente(request)}", maximo=20, ventana_segundos=VENTANA_LOGIN)
+
+    identidad = auth_service.verificar_token_supabase(datos.access_token)
+    correo = identidad["email"]
+    usuario = db.query(Usuario).filter(func.lower(Usuario.correo_electronico) == correo).first()
+
+    if not usuario:
+        if MAX_USUARIOS > 0 and db.query(Usuario).count() >= MAX_USUARIOS:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Se alcanzó el límite máximo de usuarios permitidos en el sistema. Contacta al administrador.",
+            )
+
+        partes = identidad["nombre"].strip().split(" ", 1)
+        nombres = partes[0] or correo.split("@")[0]
+        apellidos = partes[1] if len(partes) > 1 else ""
+        usuario = Usuario(
+            nombres=nombres,
+            apellidos=apellidos,
+            correo_electronico=correo,
+            # La contraseña la gestiona Supabase; este valor solo cumple el NOT NULL.
+            contrasena_encriptada=auth_service.hashear_contrasena(os.urandom(32).hex()),
+            rol=3,
+            activo=True,
+        )
+        db.add(usuario)
+        db.commit()
+        db.refresh(usuario)
+
+    if not usuario.activo:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="El usuario se encuentra inactivo en el sistema. Contacte al administrador.",
+        )
+
+    proteccion_service.reiniciar_intentos(db, usuario)
+    token = auth_service.crear_token_acceso(usuario)
+
+    return {
+        "mensaje": "Sesión de Supabase verificada",
         "usuario_id": usuario.id_usuario,
         "nombre": f"{usuario.nombres} {usuario.apellidos}".strip(),
         "correo": usuario.correo_electronico,

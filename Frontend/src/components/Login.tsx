@@ -49,24 +49,10 @@ export const Login: React.FC<LoginProps> = ({
     onEnviar(e);
   };
 
-  const manejarRegistro = (datos: {
-    nombre: string;
-    apellido: string;
-    correo: string;
-    telefono: string;
-    contrasena: string;
-  }) => {
-    console.log('Módulo Login - Registro recibido:', datos);
-    setMostrarRegistro(false);
-  };
-
   if (mostrarRegistro) {
-    return (
-      <Registro
-        onRegistrar={manejarRegistro}
-        onVolver={() => setMostrarRegistro(false)}
-      />
-    );
+    // Registro muestra su propio resultado (incluido el mensaje exacto de
+    // Supabase cuando hay error), así que no se cierra automáticamente.
+    return <Registro onVolver={() => setMostrarRegistro(false)} />;
   }
 
   return (

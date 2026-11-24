@@ -16,9 +16,11 @@ const ESTADOS: Proyecto['estado'][] = ['Planificación', 'En Ejecución', 'Final
 
 interface ProyectosTabProps {
   onProyectoCreado?: () => void;
+  rolProyecto?: string;
 }
 
-export const ProyectosTab = ({ onProyectoCreado }: ProyectosTabProps = {}) => {
+export const ProyectosTab = ({ onProyectoCreado, rolProyecto }: ProyectosTabProps = {}) => {
+  const esArquitecto = rolProyecto === 'Arquitecto';
   const [proyectos, setProyectos] = useState<Proyecto[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
@@ -209,15 +211,21 @@ export const ProyectosTab = ({ onProyectoCreado }: ProyectosTabProps = {}) => {
                     </span>
                   </div>
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <button
-                      onClick={() => abrirGeneradorEnlace(p.id)}
-                      style={{ background: '#ffd60a', border: 'none', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
-                    >
-                      <i className="fas fa-share-nodes"></i> Compartir
-                    </button>
-                    <button onClick={() => eliminarProyecto(p.id, p.nombre_proyecto)} className="btn-delete">
-                      <i className="fas fa-trash"></i>
-                    </button>
+                    <div className="ui-tooltip-wrap" data-tooltip={rolProyecto && !esArquitecto ? 'Tu rol no permite compartir enlaces. Solo el Arquitecto puede hacerlo.' : undefined}>
+                      <button
+                        onClick={() => abrirGeneradorEnlace(p.id)}
+                        disabled={!!rolProyecto && !esArquitecto}
+                        aria-disabled={!!rolProyecto && !esArquitecto}
+                        style={{ background: '#ffd60a', border: 'none', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: 700, cursor: (!!rolProyecto && !esArquitecto) ? 'not-allowed' : 'pointer' }}
+                      >
+                        <i className="fas fa-share-nodes"></i> Compartir
+                      </button>
+                    </div>
+                    <div className="ui-tooltip-wrap" data-tooltip={rolProyecto && !esArquitecto ? 'Tu rol (Visualizador) solo permite consultar' : undefined}>
+                      <button onClick={() => eliminarProyecto(p.id, p.nombre_proyecto)} className="btn-delete" disabled={!!rolProyecto && !esArquitecto} aria-disabled={!!rolProyecto && !esArquitecto}>
+                        <i className="fas fa-trash"></i>
+                      </button>
+                    </div>
                   </div>
                 </div>
 

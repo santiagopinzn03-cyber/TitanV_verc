@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { fetchConToken } from '../api';
+import { API_URL, fetchConToken } from '../api';
 import { AvisoSoloLectura, BadgeBloqueado, Obligatorio, Opcional } from './IndicadoresAcceso';
 import NotaCamposObligatorios from './ui/NotaCamposObligatorios';
 
@@ -18,8 +18,6 @@ interface Tarea {
   nombre_tarea: string;
   proyecto_id: number;
 }
-
-const API_URL = 'http://127.0.0.1:8000';
 
 interface EvidenciasTabProps {
   proyectoId?: number;

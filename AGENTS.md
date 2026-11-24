@@ -15,7 +15,7 @@ El cliente (contratante) consulta el avance de su obra; la constructora lo opera
 - **Frontend**: React 19 + TypeScript + Vite (SPA) en `Frontend/`
 - **Backend**: Python 3 + FastAPI + SQLAlchemy en `backend/`
 - **Base de datos**: PostgreSQL local (`titanv_db`)
-- **Autenticación**: JWT (PyJWT) + Google OAuth 2.0 (verificación server-side con httpx)
+- **Autenticación**: Supabase Auth (Google OAuth + correo/contraseña). El frontend canjea el access_token de Supabase en `/api/auth/supabase`; el backend lo verifica contra Supabase con httpx y emite el JWT interno (PyJWT) que usan los routers.
 - **Correo**: SMTP (Gmail) para invitaciones (`email_service.py`)
 - Sin tests automatizados; validación = `npm run build` (front) + import de la app (back)
 
@@ -24,9 +24,10 @@ El cliente (contratante) consulta el avance de su obra; la constructora lo opera
 ```text
 titanV/
 ├── Frontend/src/
-│   ├── main.tsx            # GoogleOAuthProvider (VITE_GOOGLE_CLIENT_ID)
+│   ├── main.tsx            # Entry point (sin proveedores de OAuth externos)
 │   ├── App.tsx             # Rutas + estado de sesión (localStorage: token)
-│   ├── api.ts              # fetchConToken (adjunta JWT, en 401 limpia token)
+│   ├── api.ts              # VITE_API_URL + fetchConToken (adjunta JWT, en 401 limpia token)
+│   ├── lib/                # supabase.ts (VITE_SUPABASE_URL/ANON_KEY) + sesion.ts (canje)
 │   ├── pages/              # Landing, Login, Dashboard, AceptarInvitacion
 │   └── components/         # Sidebar, Inicio, Proyectos, Colaboradores,
 │                           # Materiales, Tareas, Turnos, Evidencias, Comentarios…

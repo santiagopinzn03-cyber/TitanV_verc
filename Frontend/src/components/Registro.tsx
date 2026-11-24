@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import { errorConfiguracionSupabase, supabase } from '../lib/supabase';
 
 interface RegistroProps {
   onRegistrar?: (datos: {
@@ -11,8 +11,6 @@ interface RegistroProps {
   }) => void;
   onVolver?: () => void;
 }
-
-const API_URL = 'http://127.0.0.1:8000/api';
 
 const validarContrasena = (valor: string): string | null => {
   if (valor.length < 8) {
@@ -58,29 +56,48 @@ const Registro: React.FC<RegistroProps> = ({ onRegistrar, onVolver }) => {
     setMensajeGeneral(null);
     if (!validar()) return;
 
+    if (!supabase) {
+      setMensajeGeneral({ tipo: 'error', texto: errorConfiguracionSupabase });
+      return;
+    }
+
+    setCargando(true);
     try {
-      setCargando(true);
       const nombreCompleto = `${nombre.trim()} ${apellido.trim()}`.trim();
-      
-      // Guardar usuario en PostgreSQL mediante FastAPI
-      const respuesta = await axios.post(`${API_URL}/auth/registro`, {
-        nombre_completo: nombreCompleto,
-        correo_electronico: correo.trim(),
-        contrasena: contrasena,
-        rol: 3, // Operario por defecto
+      // Supabase crea la cuenta de autenticación; el perfil de obra se crea
+      // automáticamente en PostgreSQL la primera vez que se inicia sesión.
+      const { error } = await supabase.auth.signUp({
+        email: correo.trim(),
+        password: contrasena,
+        options: {
+          data: {
+            nombres: nombre.trim(),
+            apellidos: apellido.trim(),
+            telefono: telefono.trim(),
+            full_name: nombreCompleto,
+          },
+        },
       });
 
-      setMensajeGeneral({ tipo: 'exito', texto: `Registro completado. Ya puedes iniciar sesión con ${respuesta.data.correo_electronico}.` });
+      if (error) {
+        // Mensaje exacto devuelto por Supabase (correo repetido, contraseña
+        // débil, etc.). No se sustituye por un texto genérico.
+        setMensajeGeneral({ tipo: 'error', texto: error.message });
+        return;
+      }
 
+      setMensajeGeneral({
+        tipo: 'exito',
+        texto: 'Registro completado. Revisa tu correo para confirmar la cuenta y luego inicia sesión.',
+      });
       if (onRegistrar) {
         onRegistrar({ nombre, apellido, correo, telefono, contrasena });
-      } else if (onVolver) {
-        onVolver();
       }
     } catch (error: any) {
-      console.error('Error al registrar usuario:', error);
-      const detalle = error.response?.data?.detail || error.message || 'Error al guardar el usuario en la base de datos.';
-      setMensajeGeneral({ tipo: 'error', texto: detalle });
+      setMensajeGeneral({
+        tipo: 'error',
+        texto: error?.message || 'No se pudo completar el registro. Intenta de nuevo.',
+      });
     } finally {
       setCargando(false);
     }
@@ -269,7 +286,7 @@ const Registro: React.FC<RegistroProps> = ({ onRegistrar, onVolver }) => {
               cursor: cargando ? 'not-allowed' : 'pointer',
             }}
           >
-            {cargando ? 'Guardando en Base de Datos...' : 'Crear cuenta'}
+            {cargando ? 'Creando cuenta...' : 'Crear cuenta'}
           </button>
 
           {onVolver && (

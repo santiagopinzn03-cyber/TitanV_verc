@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Login } from '../components/Login';
-
-const API_URL = 'http://127.0.0.1:8000';
+import { API_URL } from '../api';
+import { errorConfiguracionSupabase, supabase } from '../lib/supabase';
+import { consumirErrorAutenticacion, sincronizarSesionTitan } from '../lib/sesion';
 
 interface AceptarInvitacionPageProps {
   isLoggedIn: boolean;
@@ -74,22 +75,31 @@ const AceptarInvitacionPage = ({ isLoggedIn, onLoginSuccess }: AceptarInvitacion
   const handleEnviarLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setCargandoLogin(true);
-    setErrorLogin('');
+    setErrorLogin(consumirErrorAutenticacion());
+    if (!supabase) {
+      setErrorLogin(errorConfiguracionSupabase);
+      setCargandoLogin(false);
+      return;
+    }
     try {
-      const respuesta = await fetch(`${API_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ correo_electronico: correo, contrasena }),
+      const { error } = await supabase.auth.signInWithPassword({
+        email: correo.trim(),
+        password: contrasena,
       });
-      const data = await respuesta.json();
-      if (!respuesta.ok) throw new Error(data?.detail || 'Credenciales incorrectas.');
+      if (error) {
+        setErrorLogin(error.message);
+        return;
+      }
 
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('usuario_id', String(data.usuario_id));
-      localStorage.setItem('usuario_nombre', data.nombre || correo);
+      const sesionLista = await sincronizarSesionTitan();
+      if (!sesionLista) {
+        setErrorLogin(consumirErrorAutenticacion() || 'No se pudo iniciar sesión en Titan V.');
+        return;
+      }
+
       onLoginSuccess();
     } catch (err: any) {
-      setErrorLogin(err.message || 'No se pudo iniciar sesión.');
+      setErrorLogin(err?.message || 'No se pudo iniciar sesión.');
     } finally {
       setCargandoLogin(false);
     }

@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -121,3 +122,57 @@ def verificar_token_google(access_token: str) -> dict:
         )
 
     return datos  # incluye 'email', 'name', 'picture' — confirmados por Google, no por el cliente
+
+
+def verificar_token_supabase(access_token: str) -> dict:
+    """Valida un access_token de Supabase pidiéndoselo a Supabase mismo.
+
+    El frontend solo entrega el token; el correo y el nombre se leen de la
+    respuesta verificada de `/auth/v1/user`. Así un cliente no puede inventar
+    una identidad ni usar un token manipulado para entrar a otro proyecto.
+    """
+    url = os.getenv("SUPABASE_URL", "").strip().rstrip("/")
+    anon_key = os.getenv("SUPABASE_ANON_KEY", "").strip()
+    if not url or not anon_key:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="El servidor no tiene configurado Supabase (SUPABASE_URL / SUPABASE_ANON_KEY).",
+        )
+
+    try:
+        respuesta = httpx.get(
+            f"{url}/auth/v1/user",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "apikey": anon_key,
+            },
+            timeout=5.0,
+        )
+    except httpx.RequestError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="No se pudo contactar a Supabase para verificar la sesión. Intenta de nuevo.",
+        ) from exc
+
+    if respuesta.status_code != 200:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="La sesión de Supabase no es válida o expiró. Vuelve a iniciar sesión.",
+        )
+
+    datos = respuesta.json()
+    correo = str(datos.get("email") or "").strip().lower()
+    if not correo or not datos.get("id"):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Supabase no devolvió una identidad válida para esta sesión.",
+        )
+
+    metadata = datos.get("user_metadata") or {}
+    nombre = (
+        metadata.get("full_name")
+        or metadata.get("name")
+        or metadata.get("nombres")
+        or correo.split("@")[0]
+    )
+    return {"id_supabase": str(datos["id"]), "email": correo, "nombre": str(nombre)}

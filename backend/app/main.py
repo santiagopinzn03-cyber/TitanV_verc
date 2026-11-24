@@ -1,6 +1,6 @@
 import os
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -61,7 +61,25 @@ except Exception as e:
     print(f"[Titan V WARN] Advertencia al conectar con la base de datos: {e}")
     print("[Titan V WARN] Asegurate de que el servicio de PostgreSQL este iniciado y revisa la variable DATABASE_URL en tu archivo backend/.env")
 
-app = FastAPI(title="Titan V API")
+app = FastAPI(
+    title="Titan V API",
+    docs_url="/docs" if os.getenv("ENABLE_DOCS", "true").lower() == "true" else None,
+    redoc_url="/redoc" if os.getenv("ENABLE_DOCS", "true").lower() == "true" else None,
+    openapi_url="/openapi.json" if os.getenv("ENABLE_DOCS", "true").lower() == "true" else None,
+)
+
+
+@app.middleware("http")
+async def agregar_cabeceras_seguridad(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    # HSTS solo tiene efecto sobre HTTPS; no lo forzamos en desarrollo local.
+    if request.url.scheme == "https":
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
 
 
 @app.exception_handler(RequestValidationError)
@@ -79,15 +97,14 @@ async def validacion_amigable(request, exc: RequestValidationError):
 
 
 # Configuración de CORS (necesaria para que el frontend, servido desde otro origen, pueda llamar a la API)
+_origenes_cors = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
+allow_origins = [o.strip() for o in _origenes_cors.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-        allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=allow_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept"],
 )
 
 # Registro de routers

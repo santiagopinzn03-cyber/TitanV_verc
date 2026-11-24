@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { fetchConToken } from '../api';
+import { API_URL, fetchConToken } from '../api';
 import Comentarios from './Comentarios';
 import { AvisoSoloLectura, BadgeBloqueado, Obligatorio } from './IndicadoresAcceso';
 import NotaCamposObligatorios from './ui/NotaCamposObligatorios';
@@ -16,8 +16,6 @@ export interface Tarea {
   proyecto_id: number;
   usuario_id: number;
 }
-
-const API_URL = 'http://127.0.0.1:8000';
 
 const authHeaders = () => ({
   headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
@@ -117,7 +115,7 @@ const TareasTab: React.FC<TareasTabProps> = ({ proyectoId: proyectoFijo, rolProy
 
   const formatearError = (error: any, fallback: string) => {
     if (error.code === 'ERR_NETWORK' || error.message === 'Network Error' || !error.response) {
-      return '⚠️ Error de Red: No se pudo conectar con el servidor backend (http://127.0.0.1:8000). Asegúrate de tener uvicorn corriendo en la terminal: "cd backend" y luego "uvicorn app.main:app --reload --port 8000".';
+      return `⚠️ Error de Red: No se pudo conectar con el backend (${API_URL}). Revisa VITE_API_URL y que el servidor esté corriendo.`;
     }
     return error.response?.data?.detail || error.message || fallback;
   };
@@ -360,11 +358,14 @@ const TareasTab: React.FC<TareasTabProps> = ({ proyectoId: proyectoFijo, rolProy
             </div>
 
             <div className="input-group">
-              <label>Asignar a <Obligatorio /></label>
+              <label htmlFor="tarea-asignar">Asignar a <Obligatorio /></label>
               <select
+                id="tarea-asignar"
                 value={usuarioId}
-                onChange={(e) => setUsuarioId(Number(e.target.value))}
+                onChange={(e) => { setUsuarioId(Number(e.target.value)); setErroresForm(p=>({...p,usuario:''})); }}
                 required
+                aria-required="true"
+                aria-invalid={!!erroresForm.usuario}
                 disabled={soloLectura}
               >
                 <option value="" disabled>Selecciona un operario</option>
@@ -372,11 +373,14 @@ const TareasTab: React.FC<TareasTabProps> = ({ proyectoId: proyectoFijo, rolProy
                   <option key={u.id} value={u.id}>{u.nombre_completo}</option>
                 ))}
               </select>
+              {erroresForm.usuario && <span className="field-error" role="alert">{erroresForm.usuario}</span>}
             </div>
 
-            <button type="submit" className="btn-save" disabled={guardando || soloLectura} title={soloLectura ? 'Acción no disponible para tu rol' : undefined}>
-              {soloLectura ? <><i className="fas fa-lock"></i> Solo lectura</> : guardando ? 'Guardando en BD...' : 'Guardar Tarea'}
-            </button>
+            <div className="ui-tooltip-wrap" data-tooltip={soloLectura ? 'Tu rol (Visualizador) solo permite consultar' : undefined} style={{ width: '100%' }}>
+              <button type="submit" className="btn-save" disabled={guardando || soloLectura} aria-disabled={guardando || soloLectura} style={{ width: '100%' }}>
+                {soloLectura ? <><i className="fas fa-lock"></i> Solo lectura</> : guardando ? 'Guardando en BD...' : 'Guardar Tarea'}
+              </button>
+            </div>
           </form>
         </div>
 
@@ -488,7 +492,8 @@ const TareasTab: React.FC<TareasTabProps> = ({ proyectoId: proyectoFijo, rolProy
                             value={t.estado}
                             onChange={(e) => cambiarEstado(t.id, e.target.value)}
                             disabled={soloLectura}
-                            title={soloLectura ? 'Tu rol no puede cambiar el estado' : 'Cambiar estado de la tarea'}
+                            aria-disabled={soloLectura}
+                            title={soloLectura ? 'Tu rol (Visualizador) solo permite consultar' : 'Cambiar estado de la tarea'}
                             style={{
                               backgroundColor: colorEst.bg,
                               color: colorEst.text,

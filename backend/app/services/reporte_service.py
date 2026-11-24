@@ -27,10 +27,17 @@ def _extension_valida(nombre_archivo: str) -> bool:
 async def guardar_archivo_en_disco(archivo: UploadFile) -> str:
     """Guarda el archivo con un nombre único y devuelve la ruta relativa para guardar en BD."""
     _, ext = os.path.splitext(archivo.filename or "")
-    nombre_unico = f"{uuid.uuid4().hex}{ext.lower()}"
+    ext = ext.lower()
+    if ext not in EXTENSIONES_PERMITIDAS:
+        raise ValueError("Extensión de archivo no permitida.")
+
+    nombre_unico = f"{uuid.uuid4().hex}{ext}"
     ruta_absoluta = os.path.join(CARPETA_EVIDENCIAS, nombre_unico)
 
-    contenido = await archivo.read()
+    contenido = await archivo.read(TAMANO_MAXIMO_BYTES + 1)
+    if len(contenido) > TAMANO_MAXIMO_BYTES:
+        raise ValueError(f"El archivo supera el tamaño máximo permitido de {TAMANO_MAXIMO_BYTES // (1024 * 1024)} MB.")
+
     with open(ruta_absoluta, "wb") as f:
         f.write(contenido)
 

@@ -11,6 +11,7 @@ Dos capas:
 """
 
 import math
+import os
 import threading
 import time
 from collections import defaultdict, deque
@@ -51,10 +52,12 @@ limitador = LimitadorTasa()
 
 
 def ip_cliente(request: Request) -> str:
-    """IP del cliente. Detrás de un proxy se usa X-Forwarded-For si existe."""
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
+    """IP del cliente. Detrás de un proxy confiable se usa X-Forwarded-For."""
+    confiar_proxy = os.getenv("TRUST_PROXY", "false").lower() == "true"
+    if confiar_proxy:
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
     return request.client.host if request.client else "desconocida"
 
 

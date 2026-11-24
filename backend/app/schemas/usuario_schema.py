@@ -118,8 +118,8 @@ class TokenResponse(BaseModel):
 class GoogleAuthRequest(BaseModel):
     """TV-AUTH-03: Datos para autenticación con cuenta de Google.
 
-    'credential' es el access_token que el frontend obtuvo directamente de Google
-    (via @react-oauth/google). El backend lo vuelve a verificar contra los
+    'credential' es un access_token obtenido directamente de Google por un
+    cliente legacy. El backend lo vuelve a verificar contra los
     servidores de Google — nunca confía en correo_electronico/nombre_completo
     tal cual los manda el cliente, porque esos campos se pueden falsificar.
     """
@@ -128,6 +128,12 @@ class GoogleAuthRequest(BaseModel):
     correo_electronico: Optional[EmailStr] = None
     nombre_completo: Optional[str] = None
     foto_url: Optional[str] = None
+
+
+class SupabaseAuthRequest(BaseModel):
+    """Token de acceso emitido por Supabase, listo para canjear por un JWT interno."""
+
+    access_token: str = Field(..., min_length=10, max_length=8192)
 
 
 class ForgotPasswordRequest(BaseModel):

@@ -7,6 +7,7 @@ from app.schemas.usuario_schema import (
     ForgotPasswordRequest,
     GoogleAuthRequest,
     ResetPasswordRequest,
+    SupabaseAuthRequest,
     TokenResponse,
     UsuarioBase,
     UsuarioCreate,
@@ -60,7 +61,7 @@ from app.schemas.invitacion_schema import (
 )
 
 __all__ = [
-    "UsuarioBase", "UsuarioCreate", "UsuarioUpdate", "UsuarioResponse", "UsuarioLogin", "TokenResponse", "GoogleAuthRequest",
+    "UsuarioBase", "UsuarioCreate", "UsuarioUpdate", "UsuarioResponse", "UsuarioLogin", "TokenResponse", "GoogleAuthRequest", "SupabaseAuthRequest",
     "ForgotPasswordRequest", "VerifyPinRequest", "ResetPasswordRequest",
     "ColaboradorCreate", "ColaboradorInvitar", "ColaboradorUpdate", "ColaboradorResponse",
     "InvitacionCorreoResponse",

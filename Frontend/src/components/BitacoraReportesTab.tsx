@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { fetchConToken } from '../api';
 import logoImg from '../assets/logo.png';
 import { BadgeBloqueado, Obligatorio } from './IndicadoresAcceso';
+import NotaCamposObligatorios from './ui/NotaCamposObligatorios';
 
 interface BitacoraReportesTabProps {
   proyectoId: number;
@@ -253,6 +254,8 @@ export const BitacoraReportesTab = ({
         </div>
         <div className="reporte-hero-icono"><i className="fas fa-file-lines"></i></div>
       </div>
+
+      <NotaCamposObligatorios />
 
       <div className="grid reporte-grid">
         <div className="card">
