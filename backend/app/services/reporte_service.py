@@ -12,8 +12,13 @@ from app.models import EvidenciaMultimedia
 # local (sin infraestructura extra) — si más adelante se quiere mover a un
 # servicio como S3 o Cloudinary, solo hay que cambiar estas dos funciones,
 # el resto de la app no se entera.
-CARPETA_EVIDENCIAS = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads", "evidencias")
-os.makedirs(CARPETA_EVIDENCIAS, exist_ok=True)
+_es_vercel = bool(os.getenv("VERCEL"))
+_base_uploads = "/tmp/uploads" if _es_vercel else os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads")
+CARPETA_EVIDENCIAS = os.path.join(_base_uploads, "evidencias")
+try:
+    os.makedirs(CARPETA_EVIDENCIAS, exist_ok=True)
+except Exception:
+    pass
 
 EXTENSIONES_PERMITIDAS = {".jpg", ".jpeg", ".png", ".webp", ".pdf", ".mp4"}
 TAMANO_MAXIMO_BYTES = 15 * 1024 * 1024  # 15 MB

@@ -16,7 +16,8 @@ from app.models import Usuario
 
 # backend/app/services/bitacora_utils.py -> backend/
 CARPETA_BACKEND = Path(__file__).resolve().parents[2]
-CARPETA_UPLOADS = CARPETA_BACKEND / "uploads"
+_es_vercel = bool(os.getenv("VERCEL"))
+CARPETA_UPLOADS = Path("/tmp/uploads") if _es_vercel else CARPETA_BACKEND / "uploads"
 RUTA_LOGO = CARPETA_BACKEND / "app" / "assets" / "logo.png"
 
 EXTENSIONES_IMAGEN = {".jpg", ".jpeg", ".png", ".webp"}

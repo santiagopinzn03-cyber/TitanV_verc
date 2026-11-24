@@ -51,11 +51,12 @@ export const sincronizarSesionTitan = (): Promise<boolean> => {
       const { data, error } = await supabase!.auth.getSession();
       if (error) throw new Error(error.message);
       if (!data.session) return false;
-      if (!API_URL) {
-        throw new Error('Configura VITE_API_URL en Frontend/.env con la URL pública del backend Titan V.');
+      const base = API_URL || ((import.meta as any).env?.PROD ? '' : '');
+      if (!base && !(import.meta as any).env?.PROD) {
+        throw new Error('Configura VITE_API_URL en Frontend/.env con la URL del backend Titan V.');
       }
 
-      const respuesta = await fetch(`${API_URL}/api/auth/supabase`, {
+      const respuesta = await fetch(`${base}/api/auth/supabase`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ access_token: data.session.access_token }),

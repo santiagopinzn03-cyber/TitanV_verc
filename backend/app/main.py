@@ -122,9 +122,15 @@ app.include_router(solicitud_router)
 app.include_router(bitacora_router)
 
 # Sirve los archivos subidos (fotos/PDF de evidencias) en /uploads/...
-CARPETA_UPLOADS = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
-os.makedirs(CARPETA_UPLOADS, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=CARPETA_UPLOADS), name="uploads")
+# En Vercel serverless el filesystem es efímero; /tmp es el único directorio escribible.
+_es_vercel = bool(os.getenv("VERCEL"))
+_raiz_backend = os.path.dirname(os.path.dirname(__file__))
+CARPETA_UPLOADS = os.path.join("/tmp", "uploads") if _es_vercel else os.path.join(_raiz_backend, "uploads")
+try:
+    os.makedirs(CARPETA_UPLOADS, exist_ok=True)
+    app.mount("/uploads", StaticFiles(directory=CARPETA_UPLOADS), name="uploads")
+except Exception as exc:
+    print(f"[Titan V WARN] No se pudo montar /uploads: {exc}")
 
 
 @app.get("/")

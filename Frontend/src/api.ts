@@ -6,10 +6,10 @@ export const API_URL = (
 ).replace(/\/+$/, '');
 
 export const obtenerApiUrl = (): string => {
-  if (!API_URL) {
-    throw new Error('Configura VITE_API_URL en Frontend/.env con la URL pública del backend Titan V.');
-  }
-  return API_URL;
+  if (API_URL) return API_URL;
+  // En producción sin VITE_API_URL se asume mismo origen (ej. Vercel con /api).
+  if ((import.meta as any).env?.PROD) return '';
+  throw new Error('Configura VITE_API_URL en Frontend/.env con la URL del backend Titan V.');
 };
 
 /** Extrae el mensaje legible de una respuesta de FastAPI (o de Supabase). */
